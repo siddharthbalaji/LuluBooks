@@ -6,12 +6,20 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { getBook } from "@/lib/books";
 import { useUIStore } from "@/store/useUIStore";
-import { EASE_OUT, PANEL_SPRING } from "@/lib/motion";
+import { EASE_OUT, LIGHTBOX_SPRING } from "@/lib/motion";
 
 export default function Lightbox() {
   const openBookId = useUIStore((s) => s.openBookId);
+  const openOrigin = useUIStore((s) => s.openOrigin);
   const closeBook = useUIStore((s) => s.closeBook);
   const book = openBookId ? getBook(openBookId) : undefined;
+
+  // Offset from screen center to the clicked cover, so the panel appears to
+  // zoom out of (and collapse back into) the book — macOS Quick Look style.
+  const dx =
+    openOrigin && typeof window !== "undefined" ? openOrigin.x - window.innerWidth / 2 : 0;
+  const dy =
+    openOrigin && typeof window !== "undefined" ? openOrigin.y - window.innerHeight / 2 : 0;
 
   // Close on Escape.
   useEffect(() => {
@@ -45,10 +53,16 @@ export default function Lightbox() {
             role="dialog"
             aria-modal="true"
             aria-label={book.title}
-            initial={{ opacity: 0, scale: 0.95, y: 14 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8, transition: { duration: 0.2, ease: EASE_OUT } }}
-            transition={PANEL_SPRING}
+            initial={{ opacity: 0, scale: 0.4, x: dx, y: dy }}
+            animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+            exit={{
+              opacity: 0,
+              scale: 0.4,
+              x: dx,
+              y: dy,
+              transition: { duration: 0.26, ease: EASE_OUT }
+            }}
+            transition={LIGHTBOX_SPRING}
             className="relative grid w-full max-w-2xl grid-cols-1 gap-6 overflow-hidden
                        rounded-3xl border border-white/15 bg-accent-ink/95 p-6 shadow-2xl
                        backdrop-blur-2xl sm:grid-cols-[200px_1fr] sm:p-7"

@@ -18,3 +18,7 @@ export const HOVER_SPRING = { type: "spring" as const, stiffness: 320, damping: 
 
 // Heavier spring for panels/modals so they feel physical, not snappy.
 export const PANEL_SPRING = { type: "spring" as const, stiffness: 240, damping: 26, mass: 0.9 };
+
+// macOS "Quick Look" open: grows out of the clicked item with a soft, lightly
+// overshooting settle. Quick to start, gentle to land.
+export const LIGHTBOX_SPRING = { type: "spring" as const, stiffness: 210, damping: 23, mass: 0.8 };

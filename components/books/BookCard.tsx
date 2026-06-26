@@ -27,7 +27,11 @@ export default function BookCard({ book }: { book: Book }) {
       type="button"
       variants={cardVariants}
       disabled={!isAvailable}
-      onClick={() => isAvailable && openBook(book.id)}
+      onClick={(e) => {
+        if (!isAvailable) return;
+        const r = e.currentTarget.getBoundingClientRect();
+        openBook(book.id, { x: r.left + r.width / 2, y: r.top + r.height / 2 });
+      }}
       whileHover={isAvailable ? { y: -12, transition: HOVER_SPRING } : { y: -5, transition: HOVER_SPRING }}
       whileTap={isAvailable ? { scale: 0.97, transition: HOVER_SPRING } : undefined}
       className="group flex w-[clamp(140px,22vw,200px)] flex-col items-center gap-4
