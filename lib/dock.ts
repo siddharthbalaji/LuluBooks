@@ -38,6 +38,14 @@ export const dockApps: DockApp[] = [
     dividerAfter: true
   },
   {
+    id: "instagram",
+    label: "Instagram",
+    gradient: ["#C13584", "#F77737"],
+    glyph:
+      "M8 3.5h8a4.5 4.5 0 014.5 4.5v8a4.5 4.5 0 01-4.5 4.5H8A4.5 4.5 0 013.5 16V8A4.5 4.5 0 018 3.5z M12 8.2a3.8 3.8 0 100 7.6 3.8 3.8 0 000-7.6z M16.7 7.1h.01",
+    action: { type: "link", href: "https://www.instagram.com/lulubooks" }
+  },
+  {
     id: "github",
     label: "GitHub",
     gradient: ["#3A3F4B", "#1B1F27"],
@@ -49,7 +57,7 @@ export const dockApps: DockApp[] = [
     label: "Contact",
     gradient: ["#5FC3EC", "#0A84FF"],
     glyph: "M3 6.5A1.5 1.5 0 014.5 5h15A1.5 1.5 0 0121 6.5v11A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5zM3.5 7l8.5 6 8.5-6",
-    action: { type: "link", href: "mailto:hello@lulubooks.example" },
+    action: { type: "link", href: "mailto:sidofficial7801@gmail.com" },
     dividerAfter: true
   },
   {

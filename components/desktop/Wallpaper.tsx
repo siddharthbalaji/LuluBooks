@@ -2,44 +2,66 @@
 
 import { useState } from "react";
 
-import { wallpaperImage, wallpaperLqip, wallpaperSrcSet } from "@/lib/cloudinary";
+import { wallpaperImage, wallpaperSrcSet } from "@/lib/cloudinary";
 
 /**
- * The desktop wallpaper — a single optimized still image.
+ * The desktop wallpaper.
  *
- * Performance plan:
- *  - A tiny blurred LQIP paints in the first frame, so the desktop is never
- *    blank while the full image streams in.
- *  - The full image is served via a responsive srcSet (f_auto/q_auto), so each
- *    device downloads only the resolution it can actually show — a phone never
- *    pulls a desktop-sized file. No video decode means no lag.
- *  - It's fixed and out of the layout/paint path, behind all UI.
+ * Resilience plan (so the desktop is never just a blurry smudge):
+ *  - A real gradient is always painted underneath, so even if every image
+ *    fails the background still looks intentional.
+ *  - The wallpaper is loaded from a LOCAL file first (`/wallpaper.jpg` in
+ *    /public) — no external dependency, no quota, no surprise outages.
+ *  - If the local file is missing, it falls back to the optimized Cloudinary
+ *    image automatically.
+ *  - The image only fades in once it has actually decoded; if it can't load,
+ *    the gradient simply stays. No "blur-only" broken state.
+ *
+ *  ┌──────────────────────────────────────────────────────────────────┐
+ *  │  Drop your wallpaper at  public/wallpaper.jpg  to use it locally. │
+ *  └──────────────────────────────────────────────────────────────────┘
  */
+
+const LOCAL_WALLPAPER = "/wallpaper.jpg";
+
 export default function Wallpaper() {
   const [loaded, setLoaded] = useState(false);
+  // Start with the local file; on error, swap to the Cloudinary fallback once.
+  const [src, setSrc] = useState(LOCAL_WALLPAPER);
+  const [triedFallback, setTriedFallback] = useState(false);
+
+  const isLocal = src === LOCAL_WALLPAPER;
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden bg-accent-ink">
-      {/* Instant blurred placeholder underneath. */}
+      {/* Always-on gradient base — the desktop is never blank or smudgy. */}
       <div
-        className="absolute inset-0 scale-110 bg-cover bg-center blur-xl transition-opacity duration-700"
+        className="absolute inset-0"
         style={{
-          backgroundImage: `url(${wallpaperLqip()})`,
-          opacity: loaded ? 0 : 1
+          background:
+            "radial-gradient(120% 120% at 50% 0%, #16314f 0%, #0d2036 45%, #0A1628 100%)"
         }}
       />
 
-      {/* Full optimized image. */}
+      {/* The wallpaper image, faded in only after it actually decodes. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={wallpaperImage(2560)}
-        srcSet={wallpaperSrcSet()}
+        src={src}
+        // Cloudinary fallback also benefits from a responsive srcSet.
+        srcSet={isLocal ? undefined : wallpaperSrcSet()}
         sizes="100vw"
         alt=""
         aria-hidden
         decoding="async"
         fetchPriority="high"
         onLoad={() => setLoaded(true)}
+        onError={() => {
+          if (!triedFallback) {
+            setTriedFallback(true);
+            setLoaded(false);
+            setSrc(wallpaperImage(2560));
+          }
+        }}
         className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
           loaded ? "opacity-100" : "opacity-0"
         }`}

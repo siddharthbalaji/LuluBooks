@@ -37,7 +37,7 @@ export default function Lightbox() {
             type="button"
             aria-label="Close"
             onClick={closeBook}
-            className="absolute inset-0 bg-black/40 backdrop-blur-md"
+            className="absolute inset-0 bg-black/60 backdrop-blur-lg"
           />
 
           {/* panel */}
@@ -50,8 +50,8 @@ export default function Lightbox() {
             exit={{ opacity: 0, scale: 0.96, y: 8, transition: { duration: 0.2, ease: EASE_OUT } }}
             transition={PANEL_SPRING}
             className="relative grid w-full max-w-2xl grid-cols-1 gap-6 overflow-hidden
-                       rounded-3xl border border-white/25 bg-white/15 p-6 shadow-glass
-                       backdrop-blur-glass backdrop-saturate-150 sm:grid-cols-[200px_1fr] sm:p-7"
+                       rounded-3xl border border-white/15 bg-accent-ink/95 p-6 shadow-2xl
+                       backdrop-blur-2xl sm:grid-cols-[200px_1fr] sm:p-7"
           >
             {/* close chip */}
             <button

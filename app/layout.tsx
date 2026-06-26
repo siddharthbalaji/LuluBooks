@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "LuluBooks",
   description: "An interactive home for the LuluBooks library.",
   icons: {
-    icon: "/favicon.svg"
+    icon: "/logo-gradient.svg"
   },
   openGraph: {
     title: "LuluBooks",
