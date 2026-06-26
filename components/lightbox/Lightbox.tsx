@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { getBook } from "@/lib/books";
 import { useUIStore } from "@/store/useUIStore";
+import { EASE_OUT, PANEL_SPRING } from "@/lib/motion";
 
 export default function Lightbox() {
   const openBookId = useUIStore((s) => s.openBookId);
@@ -29,7 +30,7 @@ export default function Lightbox() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
+          transition={{ duration: 0.3, ease: EASE_OUT }}
         >
           {/* backdrop */}
           <button
@@ -44,10 +45,10 @@ export default function Lightbox() {
             role="dialog"
             aria-modal="true"
             aria-label={book.title}
-            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            initial={{ opacity: 0, scale: 0.95, y: 14 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            exit={{ opacity: 0, scale: 0.96, y: 8, transition: { duration: 0.2, ease: EASE_OUT } }}
+            transition={PANEL_SPRING}
             className="relative grid w-full max-w-2xl grid-cols-1 gap-6 overflow-hidden
                        rounded-3xl border border-white/25 bg-white/15 p-6 shadow-glass
                        backdrop-blur-glass backdrop-saturate-150 sm:grid-cols-[200px_1fr] sm:p-7"

@@ -21,14 +21,12 @@ import type { Book } from "@/types";
 export const books: Book[] = [
   {
     id: "book-one",
-    // ↓↓↓ EDIT THESE FOUR LINES once your book is in /public/books ↓↓↓
-    title: "Your First Book",
+    title: "Think Like an Agency",
     author: "Lulu Books",
     description:
-      "This is your featured title. Replace the cover, file, and text in lib/books.ts once you upload your book to public/books — everything else updates automatically.",
+      "The debut title from Lulu Books. Open it to start reading, or download a copy to keep.",
     cover: "/books/featured-cover.jpg",
-    file: "/books/featured.pdf",
-    // ↑↑↑ ----------------------------------------------------------- ↑↑↑
+    file: "/books/Think-like-an-Agency.pdf",
     status: "available",
     tint: "#2DA8E0"
   },

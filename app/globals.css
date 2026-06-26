@@ -20,6 +20,15 @@
     text-rendering: optimizeLegibility;
     overflow: hidden; /* desktop home screen — no scrolling for now */
     overscroll-behavior: none;
+    /* macOS-style arrow pointer everywhere (hotspot at the tip). */
+    cursor: url("/cursors/mac-arrow.svg") 3 2, auto;
+  }
+
+  /* Text beam over editable/selectable text, matching macOS. */
+  input,
+  textarea,
+  [contenteditable="true"] {
+    cursor: url("/cursors/mac-text.svg") 8 11, text;
   }
 
   /* Crisp focus rings only when keyboard-navigating. */
@@ -32,5 +41,16 @@
   /* Tabular figures for the clock so it never jitters. */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Honor the OS "reduce motion" setting site-wide. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }

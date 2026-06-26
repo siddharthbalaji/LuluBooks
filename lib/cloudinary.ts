@@ -1,37 +1,45 @@
 /**
  * Cloudinary delivers transformed assets on the fly by injecting a
- * transformation segment into the URL. We use this to turn the raw 4K
- * wallpaper into a right-sized, auto-quality, auto-codec stream so the
- * desktop paints instantly and never stutters.
+ * transformation segment into the URL. We use this to serve the wallpaper as a
+ * right-sized, auto-format, auto-quality image so the desktop paints instantly
+ * and stays perfectly smooth (no video decode, no stutter).
  */
 
 const CLOUD_NAME = "dxqucwyyo";
-const VIDEO_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/video/upload`;
+const IMAGE_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload`;
 
-/** Raw asset identifiers (version + public id). */
-const WALLPAPER_ID = "v1782467528/Wallpaper_gshnke";
+/** Wallpaper public id (no version segment needed). */
+const WALLPAPER_ID = "Wallpaper_bi802o";
 
 /**
- * Optimized wallpaper video.
- * - f_auto: best codec the browser supports (webm/h265/h264)
- * - q_auto: perceptual quality target (much smaller than the 4K source)
- * - w_*: cap the resolution so we never decode more pixels than the screen shows
+ * Optimized wallpaper image at a given width.
+ * - f_auto: best format the browser supports (AVIF/WebP/JPEG)
+ * - q_auto: perceptual quality target (a fraction of the original file size)
+ * - w_*: never deliver more pixels than the screen can show
  */
-export function wallpaperVideo(width: number): string {
-  return `${VIDEO_BASE}/f_auto,q_auto,w_${width}/${WALLPAPER_ID}.mp4`;
+export function wallpaperImage(width: number): string {
+  return `${IMAGE_BASE}/f_auto,q_auto,w_${width}/${WALLPAPER_ID}.jpg`;
 }
 
-/** A single still frame used as an instant poster while the video buffers. */
-export function wallpaperPoster(width = 1280): string {
-  return `${VIDEO_BASE}/f_auto,q_auto,w_${width},so_0/${WALLPAPER_ID}.jpg`;
+/**
+ * A tiny, heavily blurred version used as an instant low-quality placeholder
+ * (LQIP). It paints in the first frame so the desktop is never blank while the
+ * full image streams in.
+ */
+export function wallpaperLqip(): string {
+  return `${IMAGE_BASE}/f_auto,q_auto:low,w_64,e_blur:800/${WALLPAPER_ID}.jpg`;
 }
 
-/** Ready-made source set: the browser/media stack picks what it can play. */
-export const WALLPAPER_SOURCES = {
-  desktop: wallpaperVideo(2560),
-  laptop: wallpaperVideo(1920),
-  mobile: wallpaperVideo(1280)
-};
+/**
+ * Responsive srcSet: the browser picks the smallest width that still covers the
+ * viewport at the device's pixel density. This is the main optimization — a
+ * phone never downloads a desktop-sized image.
+ */
+export function wallpaperSrcSet(): string {
+  return [1280, 1920, 2560, 3840]
+    .map((w) => `${wallpaperImage(w)} ${w}w`)
+    .join(", ");
+}
 
 /** The "Coming Soon" placeholder icon, color-coded site-side via CSS mask. */
 export const COMING_SOON_ICON =

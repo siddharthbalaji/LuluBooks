@@ -5,40 +5,42 @@ import { motion } from "framer-motion";
 
 import ComingSoonIcon from "./ComingSoon";
 import { useUIStore } from "@/store/useUIStore";
+import { EASE_OUT, HOVER_SPRING } from "@/lib/motion";
 import type { Book } from "@/types";
 
-interface BookCardProps {
-  book: Book;
-  index: number;
-}
+const cardVariants = {
+  hidden: { opacity: 0, y: 28, scale: 0.93 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.65, ease: EASE_OUT }
+  }
+};
 
-export default function BookCard({ book, index }: BookCardProps) {
+export default function BookCard({ book }: { book: Book }) {
   const openBook = useUIStore((s) => s.openBook);
   const isAvailable = book.status === "available";
 
   return (
     <motion.button
       type="button"
+      variants={cardVariants}
       disabled={!isAvailable}
       onClick={() => isAvailable && openBook(book.id)}
-      initial={{ opacity: 0, y: 24, scale: 0.94 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{
-        delay: 0.45 + index * 0.12,
-        duration: 0.55,
-        ease: [0.22, 1, 0.36, 1]
-      }}
-      whileHover={isAvailable ? { y: -10 } : { y: -4 }}
+      whileHover={isAvailable ? { y: -12, transition: HOVER_SPRING } : { y: -5, transition: HOVER_SPRING }}
+      whileTap={isAvailable ? { scale: 0.97, transition: HOVER_SPRING } : undefined}
       className="group flex w-[clamp(140px,22vw,200px)] flex-col items-center gap-4
                  outline-none disabled:cursor-default"
+      style={{ willChange: "transform" }}
       aria-label={isAvailable ? `Open ${book.title}` : "Coming soon"}
     >
       {/* cover / placeholder tile */}
       <div
         className="relative grid aspect-[3/4] w-full place-items-center overflow-hidden
                    rounded-2xl border border-white/25 bg-white/10 shadow-book
-                   backdrop-blur-md transition-shadow duration-300
-                   group-hover:shadow-[0_34px_80px_-20px_rgba(0,0,0,0.7)]"
+                   backdrop-blur-md transition-shadow duration-500 ease-out
+                   group-hover:shadow-[0_36px_84px_-20px_rgba(0,0,0,0.72)]"
       >
         {isAvailable ? (
           <Image
@@ -46,17 +48,17 @@ export default function BookCard({ book, index }: BookCardProps) {
             alt={`${book.title} cover`}
             fill
             sizes="(max-width: 768px) 40vw, 200px"
-            className="object-cover"
+            className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
             priority
           />
         ) : (
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center gap-3 transition-transform duration-500 ease-out group-hover:scale-[1.05]">
             <ComingSoonIcon size={84} />
           </div>
         )}
 
         {/* glossy hover sheen */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
       </div>
 
       {/* label */}

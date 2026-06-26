@@ -5,6 +5,7 @@ import { motion, useMotionValue } from "framer-motion";
 import DockItem from "./DockItem";
 import { dockApps } from "@/lib/dock";
 import { useUIStore } from "@/store/useUIStore";
+import { EASE_OUT } from "@/lib/motion";
 import type { DockApp } from "@/types";
 
 export default function Dock() {
@@ -37,9 +38,9 @@ export default function Dock() {
 
   return (
     <motion.div
-      initial={{ y: 90, opacity: 0 }}
+      initial={{ y: 96, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ delay: 0.25, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ delay: 0.3, duration: 0.7, ease: EASE_OUT }}
       className="fixed inset-x-0 bottom-3 z-30 flex justify-center"
     >
       <div
