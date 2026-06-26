@@ -43,7 +43,7 @@ export const dockApps: DockApp[] = [
     gradient: ["#C13584", "#F77737"],
     glyph:
       "M8 3.5h8a4.5 4.5 0 014.5 4.5v8a4.5 4.5 0 01-4.5 4.5H8A4.5 4.5 0 013.5 16V8A4.5 4.5 0 018 3.5z M12 8.2a3.8 3.8 0 100 7.6 3.8 3.8 0 000-7.6z M16.7 7.1h.01",
-    action: { type: "link", href: "https://www.instagram.com/lulubooks" }
+    action: { type: "link", href: "https://www.instagram.com/lulusidd" }
   },
   {
     id: "github",
