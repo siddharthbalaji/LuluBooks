@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    @apply bg-accent-ink font-sans text-white antialiased;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow: hidden; /* desktop home screen — no scrolling for now */
+    overscroll-behavior: none;
+  }
+
+  /* Crisp focus rings only when keyboard-navigating. */
+  :focus-visible {
+    outline: none;
+  }
+}
+
+@layer utilities {
+  /* Tabular figures for the clock so it never jitters. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
