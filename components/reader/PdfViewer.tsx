@@ -13,9 +13,9 @@ import { EASE_OUT } from "@/lib/motion";
 // version via package.json, so it always matches the library — no CDN needed.
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
-const MAX_PAGE_WIDTH = 860; // never blow the page up past a comfortable column
 const MIN_SCALE = 0.6;
-const MAX_SCALE = 2.4;
+const MAX_SCALE = 3;
+const FIT_MARGIN = 26; // breathing room so the page isn't edge-to-edge
 
 interface PdfViewerProps {
   file: string;
@@ -27,25 +27,27 @@ interface PdfViewerProps {
 export default function PdfViewer({ file, title, author, onClose }: PdfViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
+  // scale === 1 means "fit the whole page in the viewport" (100%).
   const [scale, setScale] = useState(1);
   const [direction, setDirection] = useState(0); // -1 back, +1 forward
-  const [containerWidth, setContainerWidth] = useState(720);
+  const [stage, setStage] = useState({ w: 720, h: 900 });
+  const [pageRatio, setPageRatio] = useState(0); // page height / width
   const [error, setError] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
 
-  // Keep the rendered page sized to the available stage width (responsive).
+  // Track the available stage box (width AND height) so a full page can be
+  // sized to fit the viewport rather than just the width.
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
-    const measure = () => setContainerWidth(el.clientWidth);
+    const measure = () => setStage({ w: el.clientWidth, h: el.clientHeight });
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  // Loading the worker font data locally; cMaps (rare for Latin text) via CDN.
   const options = useMemo(
     () => ({
       standardFontDataUrl: "/standard_fonts/",
@@ -55,10 +57,18 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
     []
   );
 
-  const pageWidth = useMemo(() => {
-    const base = Math.min(containerWidth - 8, MAX_PAGE_WIDTH);
-    return Math.max(240, base * scale);
-  }, [containerWidth, scale]);
+  // Width at which the entire page fits inside the stage (both dimensions).
+  const fitWidth = useMemo(() => {
+    const availW = Math.max(220, stage.w - FIT_MARGIN);
+    const availH = Math.max(220, stage.h - FIT_MARGIN);
+    if (!pageRatio) return Math.min(availW, 900);
+    return Math.min(availW, availH / pageRatio);
+  }, [stage, pageRatio]);
+
+  const pageWidth = Math.max(200, Math.round(fitWidth * scale));
+  // When zoomed past fit, the page is taller than the stage and needs to scroll
+  // from the top; at/under fit it sits centered.
+  const overflowsHeight = pageRatio > 0 && pageWidth * pageRatio > stage.h - 4;
 
   const goTo = useCallback(
     (next: number, dir: number) => {
@@ -66,7 +76,6 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
         const target = Math.min(Math.max(1, next), numPages || 1);
         if (target === cur) return cur;
         setDirection(dir);
-        // Snap the scroll back to the top of the new page.
         stageRef.current?.scrollTo({ top: 0 });
         return target;
       });
@@ -79,7 +88,7 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
 
   const zoomOut = () => setScale((s) => Math.max(MIN_SCALE, +(s - 0.2).toFixed(2)));
   const zoomIn = () => setScale((s) => Math.min(MAX_SCALE, +(s + 0.2).toFixed(2)));
-  const resetZoom = () => setScale(1);
+  const resetZoom = () => setScale(1); // back to full-page fit
 
   // Keyboard: arrows page, +/- zoom. (Esc is owned by the reader shell.)
   useEffect(() => {
@@ -100,16 +109,12 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
   return (
     <div className="flex h-full w-full flex-col">
       {/* ── Top control bar ───────────────────────────────────────────── */}
-      <div
-        className="flex items-center gap-3 border-b border-white/10 bg-white/5 px-3 py-2.5
-                   backdrop-blur-md sm:px-5"
-      >
+      <div className="flex items-center gap-3 border-b border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur-md sm:px-5">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-white sm:text-[15px]">{title}</p>
           {author && <p className="truncate text-[11px] text-white/55">{author}</p>}
         </div>
 
-        {/* zoom cluster */}
         <div className="hidden items-center gap-1 rounded-full border border-white/15 bg-white/10 p-1 sm:flex">
           <CtrlButton label="Zoom out" onClick={zoomOut} disabled={scale <= MIN_SCALE}>
             <path d="M5 10h10" />
@@ -117,8 +122,8 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
           <button
             type="button"
             onClick={resetZoom}
-            className="min-w-[3.2rem] rounded-full px-2 text-xs font-medium tabular-nums
-                       text-white/80 transition-colors hover:bg-white/10"
+            title="Fit page"
+            className="min-w-[3.2rem] rounded-full px-2 text-xs font-medium tabular-nums text-white/80 transition-colors hover:bg-white/10"
           >
             {Math.round(scale * 100)}%
           </button>
@@ -130,18 +135,10 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
         <a
           href={file}
           download
-          className="hidden items-center gap-1.5 rounded-full border border-white/20 bg-white/10
-                     px-3.5 py-1.5 text-xs font-semibold text-white transition-colors
-                     hover:bg-white/20 sm:inline-flex"
+          className="hidden items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/20 sm:inline-flex"
         >
           <svg width="14" height="14" viewBox="0 0 20 20" fill="none" aria-hidden>
-            <path
-              d="M10 3v9m0 0l-3.2-3.2M10 12l3.2-3.2M4 15.5h12"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <path d="M10 3v9m0 0l-3.2-3.2M10 12l3.2-3.2M4 15.5h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           Download
         </a>
@@ -150,8 +147,7 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
           type="button"
           onClick={onClose}
           aria-label="Close reader"
-          className="grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white
-                     transition-colors hover:bg-white/30"
+          className="grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/30"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -162,7 +158,9 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
       {/* ── Page stage ────────────────────────────────────────────────── */}
       <div
         ref={stageRef}
-        className="relative flex-1 overflow-auto overscroll-contain px-3 py-5 sm:px-6 sm:py-7"
+        className={`relative flex-1 overflow-auto overscroll-contain p-2 sm:p-3 ${
+          overflowsHeight ? "" : "grid place-items-center"
+        }`}
       >
         {error ? (
           <div className="grid h-full place-items-center px-6 text-center">
@@ -182,14 +180,23 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
           <Document
             file={file}
             options={options}
-            onLoadSuccess={({ numPages: n }) => {
-              setNumPages(n);
+            onLoadSuccess={async (pdf) => {
+              setNumPages(pdf.numPages);
               setError(false);
+              try {
+                const page = await pdf.getPage(1);
+                const vp = page.getViewport({ scale: 1 });
+                setPageRatio(vp.height / vp.width);
+              } catch {
+                /* keep width-only fallback */
+              }
             }}
             onLoadError={() => setError(true)}
             loading={<StageSpinner label="Opening book…" />}
             error={<StageSpinner label="" />}
-            className="flex min-h-full items-start justify-center"
+            className={`flex min-h-full w-full justify-center ${
+              overflowsHeight ? "items-start" : "items-center"
+            }`}
           >
             <div className="relative" style={{ width: pageWidth }}>
               <AnimatePresence custom={direction} mode="popLayout" initial={false}>
@@ -206,7 +213,7 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
                   <Page
                     pageNumber={pageNumber}
                     width={pageWidth}
-                    loading={<PageSkeleton width={pageWidth} />}
+                    loading={<PageSkeleton width={pageWidth} ratio={pageRatio} />}
                     renderAnnotationLayer
                     renderTextLayer
                   />
@@ -216,7 +223,6 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
           </Document>
         )}
 
-        {/* Edge nav arrows (desktop) */}
         {!error && numPages > 0 && (
           <>
             <EdgeArrow side="left" onClick={prev} disabled={pageNumber <= 1} />
@@ -225,7 +231,7 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
         )}
       </div>
 
-      {/* ── Bottom bar: progress + pager (always visible, touch-friendly) ─ */}
+      {/* ── Bottom bar: progress + pager ──────────────────────────────── */}
       <div className="border-t border-white/10 bg-white/5 backdrop-blur-md">
         <div className="h-0.5 w-full bg-white/10">
           <motion.div
@@ -245,22 +251,14 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
             <path d="M8 4l6 6-6 6" />
           </PagerButton>
 
-          {/* mobile download */}
           <a
             href={file}
             download
-            className="ml-1 inline-flex items-center rounded-full border border-white/20 bg-white/10
-                       p-2 text-white transition-colors hover:bg-white/20 sm:hidden"
+            className="ml-1 inline-flex items-center rounded-full border border-white/20 bg-white/10 p-2 text-white transition-colors hover:bg-white/20 sm:hidden"
             aria-label="Download"
           >
             <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden>
-              <path
-                d="M10 3v9m0 0l-3.2-3.2M10 12l3.2-3.2M4 15.5h12"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <path d="M10 3v9m0 0l-3.2-3.2M10 12l3.2-3.2M4 15.5h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </a>
         </div>
@@ -294,8 +292,7 @@ function CtrlButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="grid h-7 w-7 place-items-center rounded-full text-white/85 transition-colors
-                 hover:bg-white/15 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
+      className="grid h-7 w-7 place-items-center rounded-full text-white/85 transition-colors hover:bg-white/15 disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent"
     >
       <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
         {children}
@@ -321,9 +318,7 @@ function PagerButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-white/10
-                 text-white transition-all hover:bg-white/20 active:scale-90
-                 disabled:cursor-default disabled:opacity-25 disabled:hover:bg-white/10"
+      className="grid h-9 w-9 place-items-center rounded-full border border-white/15 bg-white/10 text-white transition-all hover:bg-white/20 active:scale-90 disabled:cursor-default disabled:opacity-25 disabled:hover:bg-white/10"
     >
       <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         {children}
@@ -347,11 +342,9 @@ function EdgeArrow({
       type="button"
       onClick={onClick}
       aria-label={side === "left" ? "Previous page" : "Next page"}
-      className={`absolute top-1/2 hidden -translate-y-1/2 place-items-center rounded-full
-                  border border-white/15 bg-black/35 p-2.5 text-white backdrop-blur-md
-                  transition-all hover:scale-105 hover:bg-black/55 md:grid ${
-                    side === "left" ? "left-3" : "right-3"
-                  }`}
+      className={`absolute top-1/2 hidden -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-black/35 p-2.5 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/55 md:grid ${
+        side === "left" ? "left-3" : "right-3"
+      }`}
     >
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         {side === "left" ? <path d="M12 4l-6 6 6 6" /> : <path d="M8 4l6 6-6 6" />}
@@ -362,7 +355,7 @@ function EdgeArrow({
 
 function StageSpinner({ label }: { label: string }) {
   return (
-    <div className="grid h-full min-h-[40vh] place-items-center">
+    <div className="grid h-full min-h-[40vh] w-full place-items-center">
       <div className="flex flex-col items-center gap-3">
         <span className="h-8 w-8 animate-spin rounded-full border-2 border-white/25 border-t-accent" />
         {label && <p className="text-sm text-white/70">{label}</p>}
@@ -371,11 +364,11 @@ function StageSpinner({ label }: { label: string }) {
   );
 }
 
-function PageSkeleton({ width }: { width: number }) {
+function PageSkeleton({ width, ratio }: { width: number; ratio: number }) {
   return (
     <div
       className="animate-pulse rounded-xl bg-white/10"
-      style={{ width, height: width * 1.3 }}
+      style={{ width, height: width * (ratio || 1.3) }}
       aria-hidden
     />
   );

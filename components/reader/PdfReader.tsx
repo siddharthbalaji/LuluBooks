@@ -39,7 +39,7 @@ export default function PdfReader() {
     <AnimatePresence>
       {book?.file && (
         <motion.div
-          className="fixed inset-0 z-[55] grid place-items-center p-0 sm:p-4 md:p-6"
+          className="fixed inset-0 z-[55]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -53,18 +53,17 @@ export default function PdfReader() {
             className="absolute inset-0 bg-black/70 backdrop-blur-xl"
           />
 
-          {/* reader surface — full-bleed on phones, framed card on larger screens */}
+          {/* reader surface — full-view on every screen size */}
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-label={`Reading ${book.title}`}
-            initial={{ opacity: 0, scale: 0.96, y: 24 }}
+            initial={{ opacity: 0, scale: 0.98, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 18, transition: { duration: 0.22, ease: EASE_OUT } }}
+            exit={{ opacity: 0, scale: 0.985, y: 12, transition: { duration: 0.2, ease: EASE_OUT } }}
             transition={READER_SPRING}
             style={{ willChange: "transform, opacity" }}
-            className="relative flex h-[100dvh] w-full flex-col overflow-hidden border-white/12
-                       bg-accent-ink/95 shadow-2xl sm:h-[88vh] sm:max-w-5xl sm:rounded-3xl sm:border"
+            className="absolute inset-0 flex h-[100dvh] w-full flex-col overflow-hidden bg-accent-ink/95"
           >
             <PdfViewer
               file={book.file}
