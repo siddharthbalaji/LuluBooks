@@ -7,6 +7,7 @@ import DockItem from "./DockItem";
 import SocialFolder from "./SocialFolder";
 import { dockApps } from "@/lib/dock";
 import { useUIStore } from "@/store/useUIStore";
+import { useHoverCapable } from "@/hooks/useHoverCapable";
 import { EASE_OUT } from "@/lib/motion";
 import type { DockApp } from "@/types";
 
@@ -20,6 +21,7 @@ const Divider = () => (
 
 export default function Dock() {
   const mouseX = useMotionValue(Number.POSITIVE_INFINITY);
+  const hoverCapable = useHoverCapable();
   const openBook = useUIStore((s) => s.openBook);
   const focusBooks = useUIStore((s) => s.focusBooks);
   const openSearch = useUIStore((s) => s.openSearch);
@@ -60,12 +62,12 @@ export default function Dock() {
       className="fixed inset-x-0 bottom-3 z-30 flex justify-center px-3"
     >
       <div
-        onMouseMove={(e) => mouseX.set(e.clientX)}
+        onMouseMove={(e) => hoverCapable && mouseX.set(e.clientX)}
         onMouseLeave={() => mouseX.set(Number.POSITIVE_INFINITY)}
         className="dock-scroll flex max-w-full items-end gap-2 overflow-x-auto rounded-3xl
                    border border-white/25 bg-white/15 px-2.5 py-2 shadow-dock
                    backdrop-blur-glass backdrop-saturate-150
-                   sm:gap-3 sm:px-3 sm:py-2.5"
+                   sm:gap-3 sm:overflow-x-visible sm:px-3 sm:py-2.5"
       >
         {dockApps.map((app) => {
           const isSocial = SOCIAL_IDS.includes(app.id);
@@ -85,7 +87,12 @@ export default function Dock() {
                   isSocial ? "hidden" : "flex"
                 }`}
               >
-                <DockItem app={app} mouseX={mouseX} onActivate={handleActivate} />
+                <DockItem
+                  app={app}
+                  mouseX={mouseX}
+                  onActivate={handleActivate}
+                  magnify={hoverCapable}
+                />
                 {app.dividerAfter && <Divider />}
               </div>
             </Fragment>

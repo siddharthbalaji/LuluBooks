@@ -77,12 +77,11 @@ export default function SocialFolder({ socials, onActivate }: SocialFolderProps)
           {socials.slice(0, 4).map((app) => (
             <span
               key={app.id}
-              className="h-3.5 w-3.5 rounded-[28%]"
-              style={{
-                backgroundImage: `linear-gradient(160deg, ${app.gradient[0]}, ${app.gradient[1]})`
-              }}
+              className="relative grid h-4 w-4 place-items-center overflow-hidden rounded-[28%]"
               aria-hidden
-            />
+            >
+              <AppIcon app={app} />
+            </span>
           ))}
         </span>
       </motion.button>
