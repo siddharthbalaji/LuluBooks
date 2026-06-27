@@ -12,6 +12,7 @@ export default function Dock() {
   const mouseX = useMotionValue(Number.POSITIVE_INFINITY);
   const openBook = useUIStore((s) => s.openBook);
   const focusBooks = useUIStore((s) => s.focusBooks);
+  const openSearch = useUIStore((s) => s.openSearch);
 
   const handleActivate = (app: DockApp) => {
     switch (app.action.type) {
@@ -20,6 +21,9 @@ export default function Dock() {
         break;
       case "focus-books":
         focusBooks();
+        break;
+      case "search":
+        openSearch();
         break;
       case "link":
         if (app.action.href) {
@@ -41,17 +45,24 @@ export default function Dock() {
       initial={{ y: 96, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ delay: 0.3, duration: 0.7, ease: EASE_OUT }}
-      className="fixed inset-x-0 bottom-3 z-30 flex justify-center"
+      className="fixed inset-x-0 bottom-3 z-30 flex justify-center px-3"
     >
+      {/*
+        On phones the full row can be wider than the screen, so the bar itself
+        scrolls horizontally (capped to the viewport) instead of pushing icons
+        off-screen. The magnification math is mouse-driven, so touch devices
+        simply get an evenly-sized, scrollable dock.
+      */}
       <div
         onMouseMove={(e) => mouseX.set(e.clientX)}
         onMouseLeave={() => mouseX.set(Number.POSITIVE_INFINITY)}
-        className="flex items-end gap-3 rounded-3xl border border-white/25
-                   bg-white/15 px-3 py-2.5 shadow-dock
-                   backdrop-blur-glass backdrop-saturate-150"
+        className="dock-scroll flex max-w-full items-end gap-2 overflow-x-auto rounded-3xl
+                   border border-white/25 bg-white/15 px-2.5 py-2 shadow-dock
+                   backdrop-blur-glass backdrop-saturate-150
+                   sm:gap-3 sm:px-3 sm:py-2.5"
       >
         {dockApps.map((app) => (
-          <div key={app.id} className="flex items-end gap-3">
+          <div key={app.id} className="flex shrink-0 items-end gap-2 sm:gap-3">
             <DockItem app={app} mouseX={mouseX} onActivate={handleActivate} />
             {app.dividerAfter && (
               <span className="mb-1 h-12 w-px self-center bg-white/25" aria-hidden />

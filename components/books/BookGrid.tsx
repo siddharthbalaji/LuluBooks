@@ -23,13 +23,15 @@ export default function BookGrid() {
       animate={booksFocused ? { scale: [1, 1.035, 1] } : { scale: 1 }}
       transition={{ duration: 0.8, ease: EASE_IN_OUT }}
     >
-      {/* Inner layer: orchestrated entrance stagger. */}
+      {/* Inner layer: orchestrated entrance stagger. Wraps on very narrow
+          screens so a card never runs off the edge. */}
       <motion.section
         id="books"
         variants={container}
         initial="hidden"
         animate="visible"
-        className="flex items-start justify-center gap-[clamp(20px,5vw,72px)]"
+        className="flex max-w-full flex-wrap items-start justify-center
+                   gap-x-[clamp(16px,5vw,72px)] gap-y-8"
         aria-label="Library"
       >
         {books.map((book) => (

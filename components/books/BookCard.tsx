@@ -34,7 +34,7 @@ export default function BookCard({ book }: { book: Book }) {
       }}
       whileHover={isAvailable ? { y: -12, transition: HOVER_SPRING } : { y: -5, transition: HOVER_SPRING }}
       whileTap={isAvailable ? { scale: 0.97, transition: HOVER_SPRING } : undefined}
-      className="group flex w-[clamp(140px,22vw,200px)] flex-col items-center gap-4
+      className="group flex w-[clamp(108px,26vw,200px)] flex-col items-center gap-4
                  outline-none disabled:cursor-default"
       style={{ willChange: "transform" }}
       aria-label={isAvailable ? `Open ${book.title}` : "Coming soon"}
