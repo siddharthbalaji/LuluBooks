@@ -10,7 +10,7 @@ const IMAGE_BASE = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload`;
 
 /** Wallpaper asset (public id + the version segment Cloudinary returned). */
 const WALLPAPER_ID = "wallpaper_stio33";
-const WALLPAPER_VERSION = "v1782474487";
+const WALLPAPER_VERSION = "v1782545307";
 
 /**
  * Optimized wallpaper image at a given width.
@@ -19,7 +19,7 @@ const WALLPAPER_VERSION = "v1782474487";
  * - w_*: never deliver more pixels than the screen can show
  */
 export function wallpaperImage(width: number): string {
-  return `${IMAGE_BASE}/f_auto,q_auto:good,w_${width}/${WALLPAPER_VERSION}/${WALLPAPER_ID}.jpg`;
+  return `${IMAGE_BASE}/f_auto,q_auto:good,w_${width}/${WALLPAPER_VERSION}/${WALLPAPER_ID}.png`;
 }
 
 /**
@@ -27,7 +27,7 @@ export function wallpaperImage(width: number): string {
  * (LQIP). Paints in the first frame so the desktop is never blank.
  */
 export function wallpaperLqip(): string {
-  return `${IMAGE_BASE}/f_auto,q_auto:low,w_64,e_blur:800/${WALLPAPER_VERSION}/${WALLPAPER_ID}.jpg`;
+  return `${IMAGE_BASE}/f_auto,q_auto:low,w_64,e_blur:800/${WALLPAPER_VERSION}/${WALLPAPER_ID}.png`;
 }
 
 /**
