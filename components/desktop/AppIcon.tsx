@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 import type { DockApp } from "@/types";
 
 /**
@@ -7,20 +9,29 @@ import type { DockApp } from "@/types";
  * glyph (stroked or filled) or a logo image on top. Purely presentational and
  * fills its parent, so callers control the size (the dock magnifies it, the
  * socials folder renders it at a fixed size).
+ *
+ * The gradient id is made unique per render with useId(): the same app icon
+ * can appear several times on the page at once (inline in the dock *and* inside
+ * the socials folder), and a shared id would collide. When the first holder of
+ * that id sits in a display:none subtree (the folder is hidden on desktop),
+ * some browsers refuse to paint the referenced gradient — the tile loses its
+ * color and looks black-and-white. A per-instance id avoids the collision.
  */
 export default function AppIcon({ app }: { app: DockApp }) {
   const [g0, g1] = app.gradient;
+  const uid = useId().replace(/:/g, "");
+  const gradId = `grad-${app.id}-${uid}`;
 
   return (
     <>
       <svg viewBox="0 0 24 24" className="h-full w-full">
         <defs>
-          <linearGradient id={`grad-${app.id}`} x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={g0} />
             <stop offset="100%" stopColor={g1} />
           </linearGradient>
         </defs>
-        <rect x="0" y="0" width="24" height="24" rx="5.4" fill={`url(#grad-${app.id})`} />
+        <rect x="0" y="0" width="24" height="24" rx="5.4" fill={`url(#${gradId})`} />
         <rect x="0" y="0" width="24" height="11" rx="5.4" fill="white" fillOpacity="0.12" />
         {app.glyph &&
           (app.filled ? (
