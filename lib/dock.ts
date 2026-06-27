@@ -1,19 +1,25 @@
 import type { DockApp } from "@/types";
 
 /**
- * The dock. Each entry is a self-contained, original rounded-square icon
- * (gradient + a white glyph drawn from SVG path data) so we never ship
- * copyrighted Apple artwork. Add, remove, or reorder freely.
+ * The dock. Each entry is a self-contained, original rounded-square icon —
+ * either a gradient + a white glyph drawn from SVG path data, or a gradient
+ * tile with a logo image on top (Portfolio). We never ship copyrighted Apple
+ * artwork. Add, remove, or reorder freely.
  *
- * Glyph paths are drawn inside a 0 0 24 24 viewBox.
+ * Glyph paths are drawn inside a 0 0 24 24 viewBox. Set `filled: true` for
+ * solid brand marks (Discord, LinkedIn); leave it off for stroked line icons.
+ *
+ * Order: [ Portfolio · Library · Featured · Search ] | [ Instagram · LinkedIn
+ * · Discord · Mail ] | [ Trash ]
  */
 export const dockApps: DockApp[] = [
   {
-    id: "finder",
-    label: "Finder",
-    gradient: ["#3AA0FF", "#1366D6"],
-    glyph: "M12 3a9 9 0 100 18 9 9 0 000-18zM8.5 9.5v3m7-3v3M8 16c1.2 1 2.6 1.5 4 1.5s2.8-.5 4-1.5",
-    action: { type: "none" }
+    // Portfolio takes the slot Finder used to occupy, using the Lulu logo mark.
+    id: "portfolio",
+    label: "Portfolio",
+    gradient: ["#5FC3EC", "#0A84FF"],
+    image: "/logo-white.svg",
+    action: { type: "link", href: "https://lulu-portfolio-three.vercel.app/" }
   },
   {
     id: "library",
@@ -30,11 +36,12 @@ export const dockApps: DockApp[] = [
     action: { type: "lightbox", bookId: "book-one" }
   },
   {
-    id: "safari",
-    label: "About",
-    gradient: ["#34C8E8", "#1366D6"],
-    glyph: "M12 3a9 9 0 100 18 9 9 0 000-18zM12 3v18M3 12h18m-3.5-5.5l-11 11m0-11l11 11",
-    action: { type: "link", href: "#about" },
+    // Search takes the slot About used to occupy, as a Spotlight-style finder.
+    id: "search",
+    label: "Search",
+    gradient: ["#9AA3B2", "#5A6373"],
+    glyph: "M11 5.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM15.4 15.4l4 4",
+    action: { type: "search" },
     dividerAfter: true
   },
   {
@@ -46,11 +53,23 @@ export const dockApps: DockApp[] = [
     action: { type: "link", href: "https://www.instagram.com/lulusidd" }
   },
   {
-    id: "github",
-    label: "GitHub",
-    gradient: ["#3A3F4B", "#1B1F27"],
-    glyph: "M12 3a9 9 0 00-2.8 17.5c.4 0 .6-.2.6-.5v-2c-2.5.5-3-1.2-3-1.2-.4-1-1-1.3-1-1.3-.8-.6 0-.6 0-.6.9 0 1.4.9 1.4.9.8 1.4 2.1 1 2.6.8.1-.6.3-1 .6-1.2-2-.2-4.1-1-4.1-4.4 0-1 .3-1.8.9-2.4-.1-.3-.4-1.2.1-2.4 0 0 .8-.3 2.5 1a8.5 8.5 0 014.4 0c1.7-1.3 2.5-1 2.5-1 .5 1.2.2 2.1.1 2.4.6.6.9 1.4.9 2.4 0 3.4-2.1 4.2-4.1 4.4.3.3.6.9.6 1.8v2.6c0 .3.2.5.6.5A9 9 0 0012 3z",
-    action: { type: "link", href: "https://github.com/siddharthbalaji/LuluBooks" }
+    id: "linkedin",
+    label: "LinkedIn",
+    gradient: ["#2D9CDB", "#0A66C2"],
+    filled: true,
+    glyph:
+      "M6.94 6.5a1.94 1.94 0 11-3.88 0 1.94 1.94 0 013.88 0zM3.4 8.9h3.1V20H3.4zM9.1 8.9h2.97v1.52h.04c.41-.78 1.42-1.6 2.93-1.6 3.13 0 3.71 2.06 3.71 4.74V20h-3.09v-4.83c0-1.15-.02-2.63-1.6-2.63-1.6 0-1.85 1.25-1.85 2.54V20H9.1z",
+    action: { type: "link", href: "https://www.linkedin.com/in/siddharthbalaji/" }
+  },
+  {
+    // Discord replaces the old GitHub entry.
+    id: "discord",
+    label: "Discord",
+    gradient: ["#5865F2", "#4250E0"],
+    filled: true,
+    glyph:
+      "M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.09.09 0 00-.07.03c-.18.33-.39.76-.53 1.09a16.09 16.09 0 00-4.8 0c-.14-.34-.35-.76-.54-1.09-.01-.02-.04-.03-.07-.03-1.5.26-2.93.71-4.27 1.33-.01 0-.02.01-.03.02-2.72 4.07-3.47 8.03-3.1 11.95 0 .02.01.04.03.05 1.8 1.32 3.53 2.12 5.24 2.65.03.01.06 0 .07-.02.4-.55.76-1.13 1.07-1.74.02-.04 0-.08-.04-.09-.57-.22-1.11-.48-1.64-.78-.04-.02-.04-.08-.01-.11.11-.08.22-.17.33-.25.02-.02.05-.02.07-.01 3.44 1.57 7.15 1.57 10.55 0 .02-.01.05-.01.07.01.11.09.22.17.33.26.04.03.04.09-.01.11-.52.31-1.07.56-1.64.78-.04.01-.05.06-.04.09.32.61.68 1.19 1.07 1.74.03.02.06.03.09.02 1.72-.53 3.45-1.33 5.25-2.65.02-.01.03-.03.03-.05.44-4.53-.73-8.46-3.1-11.95-.01-.01-.02-.02-.04-.02zM8.52 14.91c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12 0 1.17-.84 2.12-1.89 2.12zm6.97 0c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12 0 1.17-.83 2.12-1.89 2.12z",
+    action: { type: "link", href: "https://discord.com/users/715468464013443154" }
   },
   {
     id: "mail",

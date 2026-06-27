@@ -12,6 +12,7 @@ export default function Lightbox() {
   const openBookId = useUIStore((s) => s.openBookId);
   const openOrigin = useUIStore((s) => s.openOrigin);
   const closeBook = useUIStore((s) => s.closeBook);
+  const openReader = useUIStore((s) => s.openReader);
   const book = openBookId ? getBook(openBookId) : undefined;
 
   // Offset from screen center to the clicked cover, so the panel appears to
@@ -45,7 +46,7 @@ export default function Lightbox() {
             type="button"
             aria-label="Close"
             onClick={closeBook}
-            className="absolute inset-0 bg-black/60 backdrop-blur-lg"
+            className="absolute inset-0 bg-black/60 backdrop-blur-md"
           />
 
           {/* panel */}
@@ -60,12 +61,13 @@ export default function Lightbox() {
               scale: 0.4,
               x: dx,
               y: dy,
-              transition: { duration: 0.26, ease: EASE_OUT }
+              transition: { duration: 0.24, ease: EASE_OUT }
             }}
             transition={LIGHTBOX_SPRING}
+            style={{ willChange: "transform, opacity" }}
             className="relative grid w-full max-w-2xl grid-cols-1 gap-6 overflow-hidden
                        rounded-3xl border border-white/15 bg-accent-ink/95 p-6 shadow-2xl
-                       backdrop-blur-2xl sm:grid-cols-[200px_1fr] sm:p-7"
+                       backdrop-blur-xl sm:grid-cols-[200px_1fr] sm:p-7"
           >
             {/* close chip */}
             <button
@@ -106,15 +108,23 @@ export default function Lightbox() {
               <div className="mt-auto flex flex-wrap gap-3 pt-6">
                 {book.file ? (
                   <>
-                    <a
-                      href={book.file}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white
+                    <button
+                      type="button"
+                      onClick={() => openReader(book.id)}
+                      className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white
                                  shadow-lg shadow-accent/30 transition-transform hover:scale-[1.03]"
                     >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                        <path
+                          d="M6 4h9a3 3 0 013 3v13H9a3 3 0 01-3-3zM6 4v13M9 8h6M9 11h6"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
                       Read now
-                    </a>
+                    </button>
                     <a
                       href={book.file}
                       download

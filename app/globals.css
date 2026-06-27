@@ -42,6 +42,16 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  /* The dock scrolls horizontally on small screens; hide the scrollbar so it
+     still reads as a clean glass bar. */
+  .dock-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .dock-scroll::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Honor the OS "reduce motion" setting site-wide. */

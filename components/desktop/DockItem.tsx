@@ -3,12 +3,12 @@
 import { useRef } from "react";
 import {
   motion,
-  useMotionValue,
   useSpring,
   useTransform,
   type MotionValue
 } from "framer-motion";
 
+import AppIcon from "./AppIcon";
 import type { DockApp } from "@/types";
 import { DOCK_SPRING, HOVER_SPRING } from "@/lib/motion";
 
@@ -38,8 +38,6 @@ export default function DockItem({ app, mouseX, onActivate }: DockItemProps) {
   });
   const size = useSpring(sizeTarget, DOCK_SPRING);
 
-  const [g0, g1] = app.gradient;
-
   return (
     <div className="group relative flex flex-col items-center justify-end">
       {/* tooltip */}
@@ -64,24 +62,7 @@ export default function DockItem({ app, mouseX, onActivate }: DockItemProps) {
                    outline-none ring-accent focus-visible:ring-2"
         aria-label={app.label}
       >
-        <svg viewBox="0 0 24 24" className="h-full w-full">
-          <defs>
-            <linearGradient id={`grad-${app.id}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={g0} />
-              <stop offset="100%" stopColor={g1} />
-            </linearGradient>
-          </defs>
-          <rect x="0" y="0" width="24" height="24" rx="5.4" fill={`url(#grad-${app.id})`} />
-          <rect x="0" y="0" width="24" height="11" rx="5.4" fill="white" fillOpacity="0.12" />
-          <path
-            d={app.glyph}
-            fill="none"
-            stroke="white"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <AppIcon app={app} />
       </motion.button>
     </div>
   );
