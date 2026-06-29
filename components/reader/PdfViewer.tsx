@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Document, Page, pdfjs } from "react-pdf";
 
@@ -14,8 +22,12 @@ import { EASE_OUT } from "@/lib/motion";
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 const MIN_SCALE = 0.6;
-const MAX_SCALE = 3;
+const MAX_SCALE = 4;
 const FIT_MARGIN = 26; // breathing room so the page isn't edge-to-edge
+const SWIPE_THRESHOLD = 50; // px a horizontal flick must travel to turn a page
+const WHEEL_COMMIT_MS = 160; // idle time after a wheel zoom before re-rasterizing
+
+const clampScale = (s: number) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
 
 interface PdfViewerProps {
   file: string;
@@ -27,6 +39,7 @@ interface PdfViewerProps {
 export default function PdfViewer({ file, title, author, onClose }: PdfViewerProps) {
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
+  const [pageInput, setPageInput] = useState("1");
   // scale === 1 means "fit the whole page in the viewport" (100%).
   const [scale, setScale] = useState(1);
   const [direction, setDirection] = useState(0); // -1 back, +1 forward
@@ -35,17 +48,34 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
   const [error, setError] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
+  const pageWrapRef = useRef<HTMLDivElement>(null);
 
-  // Track the available stage box (width AND height) so a full page can be
-  // sized to fit the viewport rather than just the width.
+  // Live-readable mirrors of state for use inside imperative event listeners
+  // (wheel / touch) without re-subscribing them on every render.
+  const scaleRef = useRef(scale);
+  const overflowRef = useRef(false);
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+
+  // ── Stage measurement (rAF-coalesced so rapid resizes don't thrash) ──────
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
-    const measure = () => setStage({ w: el.clientWidth, h: el.clientHeight });
+    let raf = 0;
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() =>
+        setStage({ w: el.clientWidth, h: el.clientHeight })
+      );
+    };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, []);
 
   const options = useMemo(
@@ -66,10 +96,21 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
   }, [stage, pageRatio]);
 
   const pageWidth = Math.max(200, Math.round(fitWidth * scale));
-  // When zoomed past fit, the page is taller than the stage and needs to scroll
-  // from the top; at/under fit it sits centered.
   const overflowsHeight = pageRatio > 0 && pageWidth * pageRatio > stage.h - 4;
+  useEffect(() => {
+    overflowRef.current = overflowsHeight;
+  }, [overflowsHeight]);
 
+  // Cap the raster resolution. react-pdf renders at devicePixelRatio by
+  // default, so a 3× phone rasterizes 9× the pixels of a 1× screen — the main
+  // source of slow page changes on mobile. 2× stays crisp at a fraction of the
+  // cost.
+  const renderDpr = useMemo(() => {
+    if (typeof window === "undefined") return 1;
+    return Math.min(window.devicePixelRatio || 1, 2);
+  }, []);
+
+  // ── Paging ───────────────────────────────────────────────────────────────
   const goTo = useCallback(
     (next: number, dir: number) => {
       setPageNumber((cur) => {
@@ -86,13 +127,173 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
   const prev = useCallback(() => goTo(pageNumber - 1, -1), [goTo, pageNumber]);
   const next = useCallback(() => goTo(pageNumber + 1, 1), [goTo, pageNumber]);
 
-  const zoomOut = () => setScale((s) => Math.max(MIN_SCALE, +(s - 0.2).toFixed(2)));
-  const zoomIn = () => setScale((s) => Math.min(MAX_SCALE, +(s + 0.2).toFixed(2)));
+  // Keep the page-number input in sync when paging happens by other means.
+  useEffect(() => setPageInput(String(pageNumber)), [pageNumber]);
+
+  const commitPageInput = useCallback(() => {
+    const n = parseInt(pageInput, 10);
+    if (Number.isFinite(n)) goTo(n, n >= pageNumber ? 1 : -1);
+    else setPageInput(String(pageNumber));
+  }, [pageInput, pageNumber, goTo]);
+
+  // ── Continuous zoom (shared by buttons, wheel and pinch) ─────────────────
+  // A live gesture is shown with a cheap CSS transform; the page is only
+  // re-rasterized once, on commit. That keeps wheel + pinch zoom buttery
+  // instead of re-rendering the PDF on every delta.
+  const gesture = useRef({ active: false, startScale: 1, liveScale: 1 });
+  const wheelTimer = useRef<number | null>(null);
+
+  const setOrigin = useCallback((clientX: number, clientY: number) => {
+    const wrap = pageWrapRef.current;
+    if (!wrap) return;
+    const r = wrap.getBoundingClientRect();
+    const ox = Math.min(100, Math.max(0, ((clientX - r.left) / r.width) * 100));
+    const oy = Math.min(100, Math.max(0, ((clientY - r.top) / r.height) * 100));
+    wrap.style.transformOrigin = `${ox}% ${oy}%`;
+  }, []);
+
+  const beginGesture = useCallback(() => {
+    const g = gesture.current;
+    if (g.active) return;
+    g.active = true;
+    g.startScale = scaleRef.current;
+    g.liveScale = scaleRef.current;
+    if (pageWrapRef.current) pageWrapRef.current.style.willChange = "transform";
+  }, []);
+
+  const applyLive = useCallback((s: number) => {
+    const g = gesture.current;
+    g.liveScale = clampScale(s);
+    const wrap = pageWrapRef.current;
+    if (wrap) wrap.style.transform = `scale(${g.liveScale / g.startScale})`;
+  }, []);
+
+  const endGesture = useCallback(() => {
+    const g = gesture.current;
+    if (!g.active) return;
+    g.active = false;
+    setScale(g.liveScale); // single re-raster at the final scale
+  }, []);
+
+  // After a committed zoom re-renders at the new width, drop the transient
+  // transform on the next frame so there's no visible snap.
+  useLayoutEffect(() => {
+    const wrap = pageWrapRef.current;
+    if (!wrap || gesture.current.active) return;
+    const raf = requestAnimationFrame(() => {
+      wrap.style.transform = "";
+      wrap.style.transformOrigin = "center top";
+      wrap.style.willChange = "auto";
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [scale, pageWidth]);
+
+  // Button zoom — kept as gentle steps to preserve the original feel.
+  const zoomOut = () => setScale((s) => clampScale(+(s - 0.2).toFixed(2)));
+  const zoomIn = () => setScale((s) => clampScale(+(s + 0.2).toFixed(2)));
   const resetZoom = () => setScale(1); // back to full-page fit
 
-  // Keyboard: arrows page, +/- zoom. (Esc is owned by the reader shell.)
+  // ── Desktop: wheel / trackpad continuous zoom ────────────────────────────
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      // Zoom on ctrl/⌘ + wheel (also how trackpad pinch arrives) or when the
+      // page already fits and a plain scroll has nothing to scroll.
+      const zoomIntent = e.ctrlKey || e.metaKey || !overflowRef.current;
+      if (!zoomIntent) return; // let it scroll a zoomed-in page normally
+      e.preventDefault();
+      beginGesture();
+      setOrigin(e.clientX, e.clientY);
+      const factor = Math.exp(-e.deltaY * 0.0015); // smooth, continuous
+      applyLive(gesture.current.liveScale * factor);
+      if (wheelTimer.current) window.clearTimeout(wheelTimer.current);
+      wheelTimer.current = window.setTimeout(endGesture, WHEEL_COMMIT_MS);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [beginGesture, applyLive, endGesture, setOrigin]);
+
+  // ── Touch: pinch-zoom + swipe-to-page ────────────────────────────────────
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const pinch = { active: false, startDist: 0 };
+    let swipe: { x: number; y: number } | null = null;
+
+    const dist = (a: Touch, b: Touch) =>
+      Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        pinch.active = true;
+        pinch.startDist = dist(e.touches[0], e.touches[1]);
+        swipe = null;
+        beginGesture();
+        setOrigin(
+          (e.touches[0].clientX + e.touches[1].clientX) / 2,
+          (e.touches[0].clientY + e.touches[1].clientY) / 2
+        );
+      } else if (e.touches.length === 1 && !gesture.current.active) {
+        swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (pinch.active && e.touches.length === 2) {
+        e.preventDefault();
+        const ratio = dist(e.touches[0], e.touches[1]) / pinch.startDist;
+        applyLive(gesture.current.startScale * ratio);
+      } else if (swipe && e.touches.length === 1) {
+        const dx = e.touches[0].clientX - swipe.x;
+        const dy = e.touches[0].clientY - swipe.y;
+        // Only claim horizontal flicks while the page fits (not zoomed in, so
+        // there's nothing to pan) — otherwise let the page scroll/pan natively.
+        if (scaleRef.current <= 1.02 && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    const onEnd = (e: TouchEvent) => {
+      if (pinch.active && e.touches.length < 2) {
+        pinch.active = false;
+        endGesture();
+      }
+      if (swipe && e.touches.length === 0) {
+        const t = e.changedTouches[0];
+        const dx = t.clientX - swipe.x;
+        const dy = t.clientY - swipe.y;
+        if (
+          scaleRef.current <= 1.02 &&
+          Math.abs(dx) > SWIPE_THRESHOLD &&
+          Math.abs(dx) > Math.abs(dy) * 1.3
+        ) {
+          if (dx < 0) next();
+          else prev();
+        }
+        swipe = null;
+      }
+    };
+
+    el.addEventListener("touchstart", onStart, { passive: false });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd);
+    el.addEventListener("touchcancel", onEnd);
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, [beginGesture, applyLive, endGesture, setOrigin, next, prev]);
+
+  // ── Keyboard: arrows page, +/- zoom (ignored while typing) ───────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable))
+        return;
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") prev();
       else if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === " ") {
         e.preventDefault();
@@ -158,6 +359,7 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
       {/* ── Page stage ────────────────────────────────────────────────── */}
       <div
         ref={stageRef}
+        style={{ touchAction: overflowsHeight ? "pan-x pan-y" : "none" }}
         className={`relative flex-1 overflow-auto overscroll-contain p-2 sm:p-3 ${
           overflowsHeight ? "" : "grid place-items-center"
         }`}
@@ -198,7 +400,7 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
               overflowsHeight ? "items-start" : "items-center"
             }`}
           >
-            <div className="relative" style={{ width: pageWidth }}>
+            <div ref={pageWrapRef} className="relative" style={{ width: pageWidth, transformOrigin: "center top" }}>
               <AnimatePresence custom={direction} mode="popLayout" initial={false}>
                 <motion.div
                   key={pageNumber}
@@ -210,13 +412,7 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
                   transition={{ duration: 0.34, ease: EASE_OUT }}
                   className="overflow-hidden rounded-xl bg-white shadow-[0_30px_80px_-24px_rgba(0,0,0,0.7)]"
                 >
-                  <Page
-                    pageNumber={pageNumber}
-                    width={pageWidth}
-                    loading={<PageSkeleton width={pageWidth} ratio={pageRatio} />}
-                    renderAnnotationLayer
-                    renderTextLayer
-                  />
+                  <MemoPage pageNumber={pageNumber} width={pageWidth} ratio={pageRatio} dpr={renderDpr} />
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -244,9 +440,29 @@ export default function PdfViewer({ file, title, author, onClose }: PdfViewerPro
           <PagerButton label="Previous page" onClick={prev} disabled={pageNumber <= 1}>
             <path d="M12 4l-6 6 6 6" />
           </PagerButton>
-          <span className="min-w-[5.5rem] text-center text-xs font-medium tabular-nums text-white/75">
-            {numPages ? `${pageNumber} / ${numPages}` : "—"}
-          </span>
+
+          {/* Type a page number to jump straight there. */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              commitPageInput();
+              (e.currentTarget.querySelector("input") as HTMLInputElement | null)?.blur();
+            }}
+            className="flex items-center gap-1.5 text-xs font-medium tabular-nums text-white/75"
+          >
+            <input
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value.replace(/[^\d]/g, ""))}
+              onFocus={(e) => e.currentTarget.select()}
+              onBlur={commitPageInput}
+              inputMode="numeric"
+              aria-label="Go to page"
+              disabled={!numPages}
+              className="w-11 rounded-md border border-white/15 bg-white/10 px-1.5 py-1 text-center text-white outline-none transition-colors focus:border-accent disabled:opacity-50"
+            />
+            <span className="whitespace-nowrap">/ {numPages || "—"}</span>
+          </form>
+
           <PagerButton label="Next page" onClick={next} disabled={!numPages || pageNumber >= numPages}>
             <path d="M8 4l6 6-6 6" />
           </PagerButton>
@@ -273,6 +489,34 @@ const pageVariants = {
   center: { opacity: 1, x: 0 },
   exit: (dir: number) => ({ opacity: 0, x: dir >= 0 ? -70 : 70 })
 };
+
+/* Memoized page: only re-renders when the page, width or DPR actually change,
+   so unrelated state updates (zoom gesture, input typing) don't re-rasterize. */
+const MemoPage = memo(
+  function MemoPage({
+    pageNumber,
+    width,
+    ratio,
+    dpr
+  }: {
+    pageNumber: number;
+    width: number;
+    ratio: number;
+    dpr: number;
+  }) {
+    return (
+      <Page
+        pageNumber={pageNumber}
+        width={width}
+        devicePixelRatio={dpr}
+        loading={<PageSkeleton width={width} ratio={ratio} />}
+        renderAnnotationLayer
+        renderTextLayer
+      />
+    );
+  },
+  (a, b) => a.pageNumber === b.pageNumber && a.width === b.width && a.dpr === b.dpr
+);
 
 /* ── Small UI helpers ─────────────────────────────────────────────────── */
 function CtrlButton({
