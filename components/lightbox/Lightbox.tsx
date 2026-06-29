@@ -78,8 +78,8 @@ export default function Lightbox() {
               type="button"
               onClick={closeBook}
               aria-label="Close"
-              className="absolute right-4 top-4 grid h-7 w-7 place-items-center rounded-full
-                         bg-white/20 text-white transition-colors hover:bg-white/35"
+              className="absolute right-4 top-4 z-20 grid h-8 w-8 place-items-center rounded-full
+                         bg-black/45 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/65"
             >
               <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                 <path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
