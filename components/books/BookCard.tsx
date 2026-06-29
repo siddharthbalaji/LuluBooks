@@ -18,7 +18,7 @@ const cardVariants = {
   }
 };
 
-export default function BookCard({ book }: { book: Book }) {
+export default function BookCard({ book, priority = false }: { book: Book; priority?: boolean }) {
   const openBook = useUIStore((s) => s.openBook);
   const isAvailable = book.status === "available";
 
@@ -53,7 +53,8 @@ export default function BookCard({ book }: { book: Book }) {
             fill
             sizes="(max-width: 768px) 40vw, 200px"
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-            priority
+            priority={priority}
+            loading={priority ? undefined : "lazy"}
           />
         ) : (
           <div className="flex flex-col items-center gap-3 transition-transform duration-500 ease-out group-hover:scale-[1.05]">

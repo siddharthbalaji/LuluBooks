@@ -16,6 +16,8 @@ const container = {
 
 export default function BookGrid() {
   const booksFocused = useUIStore((s) => s.booksFocused);
+  // Only the first real cover is eager (it's the LCP); the rest lazy-load.
+  const firstAvailableId = books.find((b) => b.status === "available")?.id;
 
   return (
     // Outer layer: the on-demand "Library" focus pulse.
@@ -35,7 +37,7 @@ export default function BookGrid() {
         aria-label="Library"
       >
         {books.map((book) => (
-          <BookCard key={book.id} book={book} />
+          <BookCard key={book.id} book={book} priority={book.id === firstAvailableId} />
         ))}
       </motion.section>
     </motion.div>
